@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kwitansi UPT SMPN SATAP 189</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        /* TEMA BACKGROUND HITAM UNTUK PANEL KONTROL */
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #121212;
+            color: #e0e0e0;
+        }
+        
+        .kontrol-panel {
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+            width: 800px;
+            border: 1px solid #333;
+        }
+
+        .upload-section {
+            background: #1a262b;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            border: 1px solid #2c3e50;
+            text-align: center;
+        }
+
+        .cetak-batch-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed #444;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .kontrol-navigasi {
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        button {
+            padding: 8px 15px;
+            cursor: pointer;
+            font-weight: bold;
+            border-radius: 4px;
+            border: 1px solid #444;
+            background: #333;
+            color: white;
+        }
+        
+        button:hover { background: #444; }
+        button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        input[type="text"], input[type="file"] {
+            padding: 8px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background: #252525;
+            color: white;
+        }
+
+        /* CONTAINER KWITANSI (TETAP PUTIH UNTUK CETAK) */
+        .receipt-container {
+            width: 800px;
+            background-color: white;
+            padding: 40px; /* Jarak kiri-kanan-atas-bawah di layar */
+            font-family: "Times New Roman", Times, serif; 
+            box-sizing: border-box;
+            color: black;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            margin: 0 auto;
+        }
+        
+        .header { display: flex; align-items: center; border-bottom: 4px double black; padding-bottom: 10px; margin-bottom: 20px; }
+        .logo { width: 80px; height: auto; margin-right: 20px; }
+        .header-text { text-align: center; flex-grow: 1; }
+        .header-text h2 { margin: 0; font-size: 18px; text-transform: uppercase; }
+        .header-text h3 { margin: 0; font-size: 16px; text-transform: uppercase; font-weight: bold; }
+        .header-text p { margin: 2px 0; font-weight: bold; font-size: 14px; }
+
+        .budget-info { text-align: right; margin-bottom: 20px; font-size: 14px; line-height: 1.6; }
+        .title-receipt { text-align: center; font-weight: bold; margin: 20px 0; font-size: 20px; text-decoration: underline; letter-spacing: 2px; }
+
+        .content-row { display: flex; margin-bottom: 12px; align-items: flex-start; }
+        .label { width: 180px; font-size: 15px; }
+        .colon { width: 20px; }
+        .value { flex-grow: 1; font-size: 15px; }
+        
+        .box-text { border: 1px solid black; padding: 10px 15px; min-height: 30px; font-style: italic; font-weight: bold; background: #f9f9f9; }
+
+        .footer-date { text-align: right; margin-top: 25px; margin-bottom: 10px; padding-right: 50px; }
+        .signature-section { display: flex; justify-content: space-between; text-align: center; margin-top: 10px; }
+        .sig-box { width: 32%; font-size: 14px; }
+        .sig-space { height: 65px; }
+        .name { font-weight: bold; text-decoration: underline; }
+@media print {
+    @page {
+        size: A4; /* Mengunci ukuran kertas ke A4 */
+        margin: 10mm; /* Memberikan margin fisik pada kertas */
+    }
+    body { 
+        background: white !important; 
+    }
+    .kontrol-panel { display: none !important; }
+    
+    .receipt-container { 
+        box-shadow: none !important; 
+        width: 100% !important; 
+        height: auto !important; 
+        padding: 0 !important; /* Reset padding agar tidak double dengan margin kertas */
+        margin: 0 !important;
+        page-break-after: always;
+    }
+}
+        /* --- PERBAIKAN SETTING CETAK --- */
+        @media print {
+            @page {
+                size: auto;
+                margin: 0mm; /* Menghapus margin kertas bawaan browser */
+            }
+            body { 
+                background: white !important; 
+                padding: 0 !important; 
+                margin: 0 !important; 
+            }
+            .kontrol-panel { display: none !important; }
+
+            .receipt-container { 
+                box-shadow: none !important; 
+                width: 100% !important; /* Mengikuti lebar kertas */
+                height: 100vh; /* Memastikan satu kwitansi satu halaman */
+                page-break-after: always; 
+                margin: 10 !important;
+                /* Mengunci jarak kiri dan kanan (40px) agar sama dengan tampilan layar */
+                padding: 40px !important; 
+                box-sizing: border-box !important;
+                border: none !important;
+            }
+            
+            /* Mengatur agar saat cetak batch, container utama tidak mengganggu */
+            #main-display { display: block !important; }
+            body.is-batch-printing #main-display { display: none !important; }
+        }
+
+        #print-area { display: none; }
+        @media print {
+            #print-area { display: block; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="kontrol-panel">
+    <div class="upload-section">
+        <strong style="color: #3498db;">1. UPLOAD DATA SPJ:</strong> 
+        <input type="file" id="inputExcel" accept=".xlsx, .xls">
+    </div>
+
+    <div class="kontrol-navigasi">
+        <button id="btnPrev" onclick="geserData(-1)" disabled>&#8592;</button>
+        <span id="indikator-data" style="margin: 0 10px; font-weight: bold; color: #f1c40f;">Menunggu file...</span>
+        <button id="btnNext" onclick="geserData(1)" disabled>&#8594;</button>
+    
+        <span style="margin-left: 20px; color: #3498db; font-weight: bold;">Ke No:</span>
+         <input type="number" id="inputLompat" min="1" style="width: 50px; padding: 5px; background: #252525; color: white; border: 1px solid #444;" placeholder="...">
+        <button onclick="lompatKeData()" style="background: #8e44ad;">Go</button>
+    
+         <button onclick="cetakHalamanIni()" style="background: #27ae60; color: white; border: none; margin-left: 20px;">Cetak Halaman Ini</button>
+    </div>
+
+    <div class="cetak-batch-section">
+        <strong style="color: #3498db;">CETAK SEKALIGUS:</strong>
+        <input type="text" id="inputBatch" placeholder="Contoh: 1-5 atau 1,3,5">
+        <button onclick="cetakBatch()" style="background: #2980b9; color: white; border: none;">Mulai Cetak Batch</button>
+    </div>
+</div>
+
+<div id="main-display" class="receipt-container">
+    <div class="header">
+        <img src="Logo_Kabupaten_Luwu_Timur.png" alt="Logo" class="logo"> 
+        <div class="header-text">
+            <h2>PEMERINTAH KABUPATEN LUWU TIMUR</h2>
+            <h3>DINAS PENDIDIKAN DAN KEBUDAYAAN</h3>
+            <h3>UPT SMPN SATAP 189 UJUNG BARU</h3>
+            <p>DESA UJUNG BARU KEC. TOMONI KAB. LUWU TIMUR</p>
+        </div>
+    </div>
+
+    <div class="budget-info">
+        Tahun Anggaran : 2026<br>
+        Nomor : <span id="val-nomor">...</span>
+    </div>
+
+    <div class="content-row">
+        <div class="label">Kode Rekening</div><div class="colon">:</div>
+        <div class="value" id="val-kode">...</div>
+    </div>
+    <div class="content-row">
+        <div class="label">Nama Rekening</div><div class="colon">:</div>
+        <div class="value" id="val-namarek">...</div>
+    </div>
+
+    <div class="title-receipt">KWITANSI</div>
+
+    <div class="content-row">
+        <div class="label">Sudah Terima Dari</div><div class="colon">:</div>
+        <div class="value">Bendahara UPTD SMPN SATAP 189 UJUNG BARU</div>
+    </div>
+    <div class="content-row">
+        <div class="label">Banyaknya Uang</div><div class="colon">:</div>
+        <div class="value box-text" id="val-terbilang">...</div>
+    </div>
+    <div class="content-row">
+        <div class="label">Untuk Pembayaran</div><div class="colon">:</div>
+        <div class="value" id="val-pembayaran">...</div>
+    </div>
+    <div class="content-row" style="margin-top: 15px; font-weight: bold;">
+        <div class="label">Jumlah</div><div class="colon">:</div>
+        <div class="value" style="font-size: 18px;" id="val-jumlah">Rp. ...</div>
+    </div>
+
+    <div class="footer-date" id="val-tanggal">...</div>
+    <div style="text-align: center; font-weight: bold; margin-bottom: 5px; margin-left: center;">Lunas Bayar :</div>
+
+    <div class="signature-section">
+        <div class="sig-box">
+            Mengetahui/Menyetujui :<br>Kepala Sekolah
+            <div class="sig-space"></div>
+            <div class="name">MANGNGASENGI, S.Pd,SD</div>
+            <div class="nip">NIP. 19671231 200604 1 120</div>
+        </div>
+        <div class="sig-box">
+            <br>Bendahara
+            <div class="sig-space"></div>
+            <div class="name">MUH. AKBAR, S.Pd</div>
+            <div class="nip">NIP. 19940608 202221 1 002</div>
+        </div>
+        <div class="sig-box">
+            <br>Yang Menerima
+            <div class="sig-space"></div>
+            <div class="name" id="val-penerima">...</div>
+        </div>
+    </div>
+</div>
+
+<div id="print-area"></div>
+
+<script>
+    let databaseKwitansi = [];
+    let indeksSekarang = 0;
+    const logoUrl = "Logo_Kabupaten_Luwu_Timur.png";
+
+    // ... (Fungsi angkaKeHuruf dan formatTanggalIndo tetap sama) ...
+    function angkaKeHuruf(angka) {
+        var bilangan = ["", "Satu", "Dua", "Tiga", "Empat", "Lima", "Enam", "Tujuh", "Delapan", "Sembilan", "Sepuluh", "Sebelas"];
+        if (angka < 12) return bilangan[angka];
+        if (angka < 20) return angkaKeHuruf(angka - 10) + " Belas";
+        if (angka < 100) return angkaKeHuruf(Math.floor(angka / 10)) + " Puluh " + (angka % 10 !== 0 ? " " + angkaKeHuruf(angka % 10) : "");
+        if (angka < 200) return "Seratus " + (angka - 100 !== 0 ? " " + angkaKeHuruf(angka - 100) : "");
+        if (angka < 1000) return angkaKeHuruf(Math.floor(angka / 100)) + " Ratus " + (angka % 100 !== 0 ? " " + angkaKeHuruf(angka % 100) : "");
+        if (angka < 2000) return "Seribu " + (angka - 1000 !== 0 ? " " + angkaKeHuruf(angka - 1000) : "");
+        if (angka < 1000000) return angkaKeHuruf(Math.floor(angka / 1000)) + " Ribu " + (angka % 1000 !== 0 ? " " + angkaKeHuruf(angka % 1000) : "");
+        if (angka < 1000000000) return angkaKeHuruf(Math.floor(angka / 1000000)) + " Juta " + (angka % 1000000 !== 0 ? " " + angkaKeHuruf(angka % 1000000) : "");
+        return "Angka terlalu besar";
+    }
+
+    // Fungsi untuk melompat ke nomor tertentu
+function lompatKeData() {
+    const input = document.getElementById('inputLompat');
+    const target = parseInt(input.value) - 1;
+
+    if (isNaN(target) || target < 0 || target >= databaseKwitansi.length) {
+        alert("Nomor data tidak valid!");
+        return;
+    }
+
+    indeksSekarang = target;
+    tampilkanData(indeksSekarang);
+    input.value = ""; // Bersihkan input setelah lompat
+}
+
+// Tambahan: Agar bisa tekan "Enter" saat mengetik nomor
+document.getElementById('inputLompat')?.addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') {
+        lompatKeData();
+    }
+});
+
+    function formatTanggalIndo(inputTanggal) {
+        if (!inputTanggal) return "";
+        const dateObj = new Date(inputTanggal);
+        if (isNaN(dateObj.getTime())) return inputTanggal; 
+        const bulanIndo = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+        return `${dateObj.getDate()} ${bulanIndo[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
+    }
+
+    document.getElementById('inputExcel').addEventListener('change', function(e) {
+        let file = e.target.files[0];
+        if (!file) return;
+        let reader = new FileReader();
+        reader.onload = function(e) {
+            let data = new Uint8Array(e.target.result);
+            let workbook = XLSX.read(data, {type: 'array', cellDates: true});
+            let jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {header: 1, raw: false}); 
+            prosesDataExcel(jsonData);
+        };
+        reader.readAsArrayBuffer(file);
+    });
+
+    function prosesDataExcel(data) {
+        let grupData = {};
+        for (let i = 1; i < data.length; i++) {
+            let row = data[i];
+            if (!row || !row[0]) continue;
+            let nomor = row[0];
+            let jumlahKotor = row[8] ? row[8].toString().replace(/\D/g, "") : "0";
+            let jumlahAngka = parseInt(jumlahKotor) || 0;
+
+            if (!grupData[nomor]) {
+                grupData[nomor] = {
+                    nomor: nomor,
+                    tanggal: formatTanggalIndo(row[1] || new Date()),
+                    kode: row[3] || "",
+                    penerima: row[10] || "",
+                    namaRekening: row[13] || "",
+                    pembayaran: row[14] || "",
+                    totalJumlah: 0
+                };
+            }
+            grupData[nomor].totalJumlah += jumlahAngka;
+        }
+        databaseKwitansi = Object.values(grupData).map(item => {
+            return {
+                ...item,
+                terbilang: angkaKeHuruf(item.totalJumlah) + " Rupiah",
+                jumlahFormat: item.totalJumlah.toLocaleString('id-ID')
+            };
+        });
+        if (databaseKwitansi.length > 0) {
+            indeksSekarang = 0;
+            tampilkanData(0);
+        }
+    }
+
+    function tampilkanData(index) {
+        const data = databaseKwitansi[index];
+        document.getElementById('val-nomor').innerText = data.nomor;
+        document.getElementById('val-kode').innerText = data.kode;
+        document.getElementById('val-namarek').innerText = data.namaRekening;
+        document.getElementById('val-terbilang').innerText = data.terbilang; 
+        document.getElementById('val-pembayaran').innerText = data.pembayaran;
+        document.getElementById('val-jumlah').innerText = "Rp. " + data.jumlahFormat;
+        document.getElementById('val-tanggal').innerText = "Tomoni, " + data.tanggal;
+        document.getElementById('val-penerima').innerText = data.penerima;
+
+        document.getElementById('indikator-data').innerText = `Data: ${index + 1} / ${databaseKwitansi.length}`;
+        document.getElementById('btnPrev').disabled = (index === 0);
+        document.getElementById('btnNext').disabled = (index === databaseKwitansi.length - 1);
+    }
+
+    function geserData(arah) {
+        indeksSekarang += arah;
+        tampilkanData(indeksSekarang);
+    }
+
+    function cetakHalamanIni() {
+        if (databaseKwitansi.length === 0) return;
+        document.body.classList.remove('is-batch-printing');
+        window.print();
+    }
+
+    function cetakBatch() {
+        const input = document.getElementById('inputBatch').value;
+        if (!input || databaseKwitansi.length === 0) return;
+
+        let indices = [];
+        if (input.includes('-')) {
+            const parts = input.split('-');
+            const start = parseInt(parts[0]) - 1;
+            const end = parseInt(parts[1]) - 1;
+            for (let i = start; i <= end; i++) { if (databaseKwitansi[i]) indices.push(i); }
+        } else {
+            indices = input.split(',').map(n => parseInt(n.trim()) - 1).filter(n => databaseKwitansi[n]);
+        }
+
+        if (indices.length === 0) return;
+
+        const printArea = document.getElementById('print-area');
+        printArea.innerHTML = ''; 
+        document.body.classList.add('is-batch-printing');
+
+        indices.forEach(idx => {
+            const data = databaseKwitansi[idx];
+            // Menggunakan struktur class yang sama persis agar CSS terpanggil otomatis
+            printArea.innerHTML += `
+                <div class="receipt-container">
+                    <div class="header">
+                        <img src="${logoUrl}" class="logo" alt="Logo"> 
+                        <div class="header-text">
+                            <h2>PEMERINTAH KABUPATEN LUWU TIMUR</h2>
+                            <h3>DINAS PENDIDIKAN DAN KEBUDAYAAN</h3>
+                            <h3>UPT SMPN SATAP 189 UJUNG BARU</h3>
+                            <p>DESA UJUNG BARU KEC. TOMONI KAB. LUWU TIMUR</p>
+                        </div>
+                    </div>
+                    <div class="budget-info">Tahun Anggaran : 2026<br>Nomor : ${data.nomor}</div>
+                    <div class="content-row"><div class="label">Kode Rekening</div><div class="colon">:</div><div class="value">${data.kode}</div></div>
+                    <div class="content-row"><div class="label">Nama Rekening</div><div class="colon">:</div><div class="value">${data.namaRekening}</div></div>
+                    <div class="title-receipt">KWITANSI</div>
+                    <div class="content-row"><div class="label">Sudah Terima Dari</div><div class="colon">:</div><div class="value">Bendahara UPTD SMPN SATAP 189 UJUNG BARU</div></div>
+                    <div class="content-row"><div class="label">Banyaknya Uang</div><div class="colon">:</div><div class="value box-text">${data.terbilang}</div></div>
+                    <div class="content-row"><div class="label">Untuk Pembayaran</div><div class="colon">:</div><div class="value">${data.pembayaran}</div></div>
+                    <div class="content-row" style="margin-top:15px; font-weight:bold;"><div class="label">Jumlah</div><div class="colon">:</div><div class="value" style="font-size:18px;">Rp. ${data.jumlahFormat}</div></div>
+                    <div class="footer-date">Tomoni, ${data.tanggal}</div>
+                    <div style="text-align: center; font-weight: bold; margin-bottom: 5px; margin-left: center;">Lunas Bayar :</div>
+                    <div class="signature-section">
+                        <div class="sig-box">Mengetahui/Menyetujui :<br>Kepala Sekolah<div class="sig-space"></div><div class="name">MANGNGASENGI, S.Pd,SD</div><div class="nip">NIP. 19671231 200604 1 120</div></div>
+                        <div class="sig-box"><br>Bendahara<div class="sig-space"></div><div class="name">MUH. AKBAR, S.Pd</div><div class="nip">NIP. 19940608 202221 1 002</div></div>
+                        <div class="sig-box"><br>Yang Menerima<div class="sig-space"></div><div class="name">${data.penerima}</div></div>
+                    </div>
+                </div>`;
+        });
+
+        setTimeout(() => {
+            window.print();
+            printArea.innerHTML = ''; 
+            document.body.classList.remove('is-batch-printing');
+        }, 500);
+    }
+</script>
+
+</body>
+</html>
